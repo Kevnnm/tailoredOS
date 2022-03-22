@@ -1,4 +1,8 @@
-/.ccls
-/.ccls-cache/
-/build/
-/dist/
+.ccls
+.ccls-cache/
+build/
+dist/
+*.o
+*.iso
+*.elf
+*.bin
