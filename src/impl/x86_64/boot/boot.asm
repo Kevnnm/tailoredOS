@@ -9,7 +9,6 @@
 section .text
 bits 32                         ; 32 bit mode instructions
 global _start
-extern long_mode_main
 
 _start:
     mov esp, stack_top          ; esp register holds current stack pointer
@@ -21,10 +20,10 @@ _start:
     call page_tables
     call enable_paging
 
-    lgdt [gdt64.pointer]
+    lgdt [GDT64Pointer]
     ;; Reload CS register containing code selector with jmp command
     ;; see https://wiki.osdev.org/GDT_Tutorial#What_to_Put_In_a_GDT
-    jmp gdt64.code_segment:long_mode_main
+    jmp GDT64.Code:entry64
 
 
 check_multiboot:
@@ -128,6 +127,24 @@ error:
     mov byte [0xb800a], al
     hlt
 
+bits 64
+extern init_multiboot2
+entry64:
+    ;; load kernel data segment into all data segment registers
+    mov   ax, GDT64.Data
+    mov   ds, ax
+    mov   es, ax
+    mov   fs, ax
+    mov   gs, ax
+    mov   ss, ax
+
+    mov rsp, stack_top
+
+    call init_multiboot2
+
+    cli
+    hlt
+
 section .bss
 align 4096
 page_table_l4:
@@ -141,10 +158,57 @@ stack_bottom:
 stack_top:
 
 section .rodata
-gdt64:
-    dq 0                        ; zero entry
-.code_segment: equ $ - gdt64
-    dq (1 << 53) | (1 << 47) | (1 << 44) | (1 << 43) ; code segment
-.pointer:
-    dw $ - gdt64 - 1
-    dq gdt64
+align 16
+GDT64:                           ; Global Descriptor Table (64-bit).
+    .Null: equ $ - GDT64         ; The null descriptor.
+    dw 0xFFFF                    ; Limit (low).
+    dw 0                         ; Base (low).
+    db 0                         ; Base (middle)
+    db 0                         ; Access.
+    db 0                         ; Granularity.
+    db 0                         ; Base (high).
+    .Code: equ $ - GDT64         ; The code descriptor.
+    dw 0                         ; Limit (low).
+    dw 0                         ; Base (low).
+    db 0                         ; Base (middle)
+    db 10011010b                 ; Access (exec/read).
+    db 00100000b                 ; Granularity, 64 bits flag, limit19:16.
+    db 0                         ; Base (high).
+    .Data: equ $ - GDT64         ; The data descriptor.
+    dw 0                         ; Limit (low).
+    dw 0                         ; Base (low).
+    db 0                         ; Base (middle)
+    db 10010010b                 ; Access (read/write).
+    db 00000000b                 ; Granularity.
+    db 0                         ; Base (high).
+    .UserCode: equ $ - GDT64     ; The usermode code descriptor.
+    dw 0                         ; Limit (low).
+    dw 0                         ; Base (low).
+    db 0                         ; Base (middle)
+    db 11111010b                 ; Access (exec/read).
+    db 00100000b                 ; Granularity, 64 bits flag, limit19:16.
+    db 0                         ; Base (high).
+    .UserData: equ $ - GDT64     ; The usermode data descriptor.
+    dw 0                         ; Limit (low).
+    dw 0                         ; Base (low).
+    db 0                         ; Base (middle)
+    db 11110010b                 ; Access (read/write).
+    db 00000000b                 ; Granularity.
+    db 0                         ; Base (high).
+    .TSS: ;equ $ - GDT64         ; TSS Descriptor
+    .len:
+    dw 108                       ; TSS Length - the x86_64 TSS is 108 bytes loong
+    .low:
+    dw 0                         ; Base (low).
+    .mid:
+    db 0                         ; Base (middle)
+    db 10001001b                 ; Flags
+    db 00000000b                 ; Flags 2
+    .high:
+    db 0                         ; Base (high).
+    .high32:
+    dd 0                         ; High 32 bits
+    dd 0                         ; Reserved
+GDT64Pointer:                    ; The GDT-pointer.
+    dw $ - GDT64 - 1             ; Limit.
+    dq GDT64                     ; Base.
