@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include "CPU.h"
 
 typedef struct {
 	uint16_t    isr_low;      // The lower 16 bits of the ISR's address
@@ -13,5 +14,7 @@ typedef struct {
 } __attribute__((packed)) idt_entry_t;
 
 void disable_pic();
+
+typedef void (*isr_t)(void*, register_context*);
 
 void idt_init(void); // Initialize IDT

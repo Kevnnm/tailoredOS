@@ -16,10 +16,10 @@ void init_extra(void) {
 void init_multiboot2(void) {
     init_core();
 
-    print_clear();
-    print_set_color(PRINT_COLOR_YELLOW, PRINT_COLOR_BLACK);
+    /* print_clear(); */
+    /* print_set_color(PRINT_COLOR_YELLOW, PRINT_COLOR_BLACK); */
 
-    init_extra();
+    /* init_extra(); */
 
     kernel_main();
 }
