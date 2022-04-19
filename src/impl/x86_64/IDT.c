@@ -21,6 +21,7 @@ static idtr_t idtr;
 
 // General exception handler
 void isr_handler(int int_num, register_context* regs) {
+	(void) regs;
     print_str("interrupt handler char = ");
 	print_char((char) int_num);
     print_str("\n");

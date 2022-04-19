@@ -18,23 +18,27 @@ x86_64_asm_objects := $(patsubst src/impl/x86_64/%.asm, build/x86_64/%_asm.o, $(
 
 x86_64_objects := $(x86_64_c_objects) $(x86_64_asm_objects)
 
+CFLAGS += -ggdb -std=c11 -ffreestanding -mno-red-zone -mcmodel=kernel
+CFLAGS += -Wall -Werror -Wextra
+CFLAGS += -mno-sse -mno-mmx -mno-sse2
+
 includes := -I src/include/kernel \
 			-I src/include/x86_64
 
 $(kernel_objects) : build/kernel/%.o : src/impl/kernel/%.c
 	mkdir -p $(dir $@) && \
     printf "\e33;1mCompiling c file\e[0m $@\n" && \
-	x86_64-elf-gcc -ggdb -std=c11 -c $(includes) -ffreestanding $(patsubst build/kernel/%.o, src/impl/kernel/%.c, $@) -o $@
+	x86_64-elf-gcc $(CFLAGS) -c $(includes) $(patsubst build/kernel/%.o, src/impl/kernel/%.c, $@) -o $@
 
 $(x86_64_c_objects) : build/x86_64/%.o : src/impl/x86_64/%.c
 	mkdir -p $(dir $@) && \
     printf "\e33;1mCompiling c file\e[0m $@\n" && \
-	x86_64-elf-gcc -ggdb -c $(includes) -ffreestanding $(patsubst build/x86_64/%.o, src/impl/x86_64/%.c, $@) -o $@
+	x86_64-elf-gcc $(CFLAGS) -c $(includes) $(patsubst build/x86_64/%.o, src/impl/x86_64/%.c, $@) -o $@
 
 $(x86_64_asm_objects) : build/x86_64/%_asm.o : src/impl/x86_64/%.asm
 	mkdir -p $(dir $@) && \
     printf "\e[33;1mCompiling assembly file\e[0m $@\n" && \
-	nasm -g -f elf64 $(patsubst build/x86_64/%_asm.o, src/impl/x86_64/%.asm, $@) -o $@
+	nasm -g -f elf64 -F dwarf $(patsubst build/x86_64/%_asm.o, src/impl/x86_64/%.asm, $@) -o $@
 
 .PHONY: build-x86_64 clean
 
