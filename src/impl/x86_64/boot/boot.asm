@@ -6,35 +6,22 @@
 ;;   - https://www.amd.com/system/files/TechDocs/24593.pdf
 ;;   # TODO: Refactor File
 
+%define KERNEL_VMA 0xFFFFFFFF80000000
+%define KERNEL_PML4_INDEX ((KERNEL_VMA >> 39) & 0x1FF)
+%define KERNEL_PDPT_INDEX ((KERNEL_VMA >> 30) & 0x1FF)
+
 section .text
 bits 32                         ; 32 bit mode instructions
 global _start
 
 _start:
-    mov esp, stack_top          ; esp register holds current stack pointer
+    mov esp, stack_top - KERNEL_VMA          ; esp register holds current stack pointer
 
-    call check_multiboot
-    call check_cpuid
-    call check_long_mode
-
-    call page_tables
-    call enable_paging
-
-    lgdt [GDT64Pointer]
-    ;; Reload CS register containing code selector with jmp command
-    ;; see https://wiki.osdev.org/GDT_Tutorial#What_to_Put_In_a_GDT
-    jmp GDT64.Code:entry64
-
-
-check_multiboot:
+    ;; Check multiboot
     cmp eax, 0x36d76289        ; Magic value multiboot2 stores into eax when loading OS
     jne .no_multiboot
-    ret
-.no_multiboot:
-    mov al, "M"
-    jmp error
 
-check_cpuid:
+    ;; Check CPUID
     pushfd                      ; Push CPU flags register
     pop eax
     mov ecx, eax
@@ -47,12 +34,8 @@ check_cpuid:
     popfd
     cmp eax, ecx
     je .no_cpuid
-    ret
-.no_cpuid:
-    mov al, "C"
-    jmp error
 
-check_long_mode:
+    ;; Check long mode
     mov eax, 0x80000000
     cpuid
     ;; Check if highest function parameter is higher than
@@ -64,42 +47,38 @@ check_long_mode:
     cpuid
     test edx, 1 << 29            ; Long-Mode support is indicated by the 29th bit
     jz .no_long_mode
-    ret
-.no_long_mode:
-    mov al, "L"
-    jmp error
 
-;; Identity mapping for now
-;; # TODO: Improve memory mapping
-page_tables:
-    mov eax, page_directory_pointer_entry
+    ;; Setup page tables
+    mov eax, kernel_pdpt_lower
     or eax, 0b11                ; present, writable flags
-    mov [page_table_l4], eax
+    mov [kernel_pml4], eax
 
-    mov eax, page_directory_entry
+    mov eax, kernel_pdpt
+    or eax, 0b11
+    mov [kernel_pml4 + KERNEL_PML4_INDEX * 8], eax
+
+    mov eax, kernel_pde
     or eax, 0b11                ; present, writable flags
-    mov [page_directory_pointer_entry], eax
+    mov [kernel_pdpt_lower], eax
+    mov [kernel_pdpt + KERNEL_PDPT_INDEX * 8], eax
 
     mov ecx, 0                  ; index
-
 .loop:
     ;; Pointing Page Directory directly to physical memory instead of to Page Table Entry
     ;; See `AMD64 Architecture Programmer’s Manual Volume 2: System Programming` Chapter 5.3.4
     mov eax, 0x200000
     mul ecx
     or eax, 0b10000011             ; present, writable, huge page size (2MiB)
-    mov [page_directory_entry + ecx * 8], eax ; PDE holds 2MiB seperated pages
+    mov [kernel_pde + ecx * 8], eax ; PDE holds 2MiB seperated pages
 
     inc ecx
     ;; 512 * 2MiB = 1GiB of memory mapped
     cmp ecx, 512                ; Check if whole table is mapped
     jne .loop
 
-    ret
-
-enable_paging:
+    ;; Enable paging
     ;; CPU looks at cr3 for top level page map
-    mov eax, page_table_l4
+    mov eax, kernel_pml4
     mov cr3, eax
 
     ;; Enable PAE
@@ -118,9 +97,21 @@ enable_paging:
     or ebx, (1 << 31) | (1 << 0)
     mov cr0, ebx
 
-    ret
+    lgdt [GDT64Pointer - KERNEL_VMA]
+    ;; Reload CS register containing code selector with jmp command
+    ;; see https://wiki.osdev.org/GDT_Tutorial#What_to_Put_In_a_GDT
+    jmp GDT64.Code:entry64 - KERNEL_VMA
 
-error:
+.no_multiboot:
+    mov al, "M"
+    jmp .error
+.no_cpuid:
+    mov al, "C"
+    jmp .error
+.no_long_mode:
+    mov al, "L"
+    jmp .error
+.error:
     mov dword [0xb8000], 0x4f524f45
     mov dword [0xb8004], 0x4f3a4f52
     mov dword [0xb8008], 0x4f204f20
@@ -138,8 +129,12 @@ entry64:
     mov   gs, ax
     mov   ss, ax
 
-    mov rsp, stack_top
+    add rsp, KERNEL_VMA
+    lgdt [GDT64Pointer64]
 
+    mov rax, higher_half
+    jmp rax
+higher_half:
     call init_multiboot2
 
     cli
@@ -147,11 +142,13 @@ entry64:
 
 section .bss
 align 4096
-page_table_l4:
+kernel_pml4 equ $ - KERNEL_VMA
     resb 4096
-page_directory_pointer_entry:
+kernel_pdpt_lower equ $ - KERNEL_VMA
     resb 4096
-page_directory_entry:
+kernel_pdpt equ $ - KERNEL_VMA
+    resb 4096
+kernel_pde equ $ - KERNEL_VMA
     resb 4096
 stack_bottom:
     resb 4096 * 4
@@ -211,4 +208,7 @@ GDT64:                           ; Global Descriptor Table (64-bit).
     dd 0                         ; Reserved
 GDT64Pointer:                    ; The GDT-pointer.
     dw $ - GDT64 - 1             ; Limit.
+    dq GDT64 - KERNEL_VMA                    ; Base.
+GDT64Pointer64:                    ; The GDT-pointer.
+    dw GDT64Pointer - GDT64 - 1             ; Limit.
     dq GDT64                     ; Base.

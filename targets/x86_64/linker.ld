@@ -1,23 +1,32 @@
 ENTRY(_start)
 
+phys = 0x100000;
+offset = 0xFFFFFFFF80000000;
+virt = offset + phys;
+
 SECTIONS
 {
-  . = 1M;
+  . = virt;
 
-  .rodata BLOCK(4K) : ALIGN(4K)
+  .rodata ALIGN(4K) : AT(ADDR(.rodata) - offset)
   {
     KEEP(*(.multiboot_header))
     *(.rodata)
     *(.rodata*)
   }
 
-  .text BLOCK(4K) : ALIGN (4K)
+  .text ALIGN(4K) : AT(ADDR(.text) - offset)
   {
     *(.text)
     *(.text*)
   }
 
-  .bss BLOCK(4K) : ALIGN(4K)
+  .data ALIGN(4K) : AT(ADDR(.data) - offset)
+  {
+          *(.data)
+  }
+
+  .bss ALIGN(4K) : AT(ADDR(.bss) - offset)
   {
     *(.bss)
   }
