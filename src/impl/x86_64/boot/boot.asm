@@ -129,7 +129,7 @@ entry64:
     mov   gs, ax
     mov   ss, ax
 
-    add rsp, KERNEL_VMA
+    mov rsp, stack_top
     lgdt [GDT64Pointer64]
 
     mov rax, higher_half
