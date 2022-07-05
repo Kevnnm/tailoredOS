@@ -2,6 +2,7 @@
 #include "CPU.h"
 #include "IDT.h"
 #include "print.h"
+#include "memory.h"
 
 #define IA32_APIC_BASE_MSR 0x1B
 #define IA32_APIC_BASE_MSR_ENABLE 0x800
@@ -35,6 +36,7 @@ void write_base(uint64_t val) {
 
 int local_init() {
     local_base = read_base() & LOCAL_APIC_BASE;
+    local_base = get_io_mapping(local_base);
 
     write_base(read_base() | IA32_APIC_BASE_MSR_ENABLE);
 
@@ -62,7 +64,7 @@ int apic_init() {
 
     // TODO: init local APIC and IO-APIC
     // https://wiki.osdev.org/APIC
-    /* local_init(); */
+    local_init();
 
     __asm__("sti");
 

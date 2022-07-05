@@ -32,3 +32,12 @@ void init_virtual_memory(void) {
 
     __asm__ volatile("mov %%rax, %%cr3" ::"a"((uint64_t)kernelPML4 - KERNEL_VIRTUAL_BASE));
 }
+
+uintptr_t get_io_mapping(uintptr_t addr) {
+    if (addr > 0xffffffff) {
+        // MMIO generally does not reside > 4GB
+        return 0xffffffff;
+    }
+
+    return addr + IO_VIRTUAL_BASE;
+}

@@ -21,7 +21,7 @@ void init_multiboot2(void) {
     print_set_color(PRINT_COLOR_YELLOW, PRINT_COLOR_BLACK);
 
     init_core();
-    /* init_extra(); */
+    init_extra();
 
     kernel_main();
 }

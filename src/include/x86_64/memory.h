@@ -49,3 +49,5 @@ static inline void SetPageFrame(uint64_t* page, uint64_t addr) { *page = (*page 
 static inline void SetPageFlags(uint64_t* page, uint64_t flags) { *page |= flags; }
 
 void init_virtual_memory(void);
+
+uintptr_t get_io_mapping(uintptr_t addr);
