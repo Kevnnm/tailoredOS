@@ -49,6 +49,7 @@ _start:
     jz .no_long_mode
 
     ;; Setup page tables
+    ;; This is 2-Mb page translations
     mov eax, kernel_pdpt_lower
     or eax, 0b11                ; present, writable flags
     mov [kernel_pml4], eax
