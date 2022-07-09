@@ -3,6 +3,7 @@
 #include "kernel.h"
 #include "print.h"
 #include "memory.h"
+#include "serial.h"
 
 void init_core(void) {
     init_virtual_memory();
@@ -17,8 +18,8 @@ void init_extra(void) {
 
 
 void init_multiboot2(void) {
-    print_clear();
-    print_set_color(PRINT_COLOR_YELLOW, PRINT_COLOR_BLACK);
+    init_serial();
+    serial_write("Starting tailoredOS...\r\n");
 
     init_core();
     init_extra();

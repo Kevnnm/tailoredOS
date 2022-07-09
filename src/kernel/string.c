@@ -1,5 +1,5 @@
 #include "string.h"
-#include <stdint.h>
+#include "stdint.h"
 
 void* memset(void* src, int c, size_t count) {
     uint8_t* xs = (uint8_t*)src;
@@ -49,3 +49,49 @@ int memcmp(const void* s1, const void* s2, size_t n) {
 
     return 0;
 }
+
+size_t strlen(const char* str) {
+    size_t i = 0;
+    while (str[i])
+        i++;
+    return i;
+}
+
+void reverse(char* str, size_t length) {
+    char* end = str + length - 1;
+
+    for (size_t i = 0; i < length / 2; i++) {
+        char c = *end;
+        *end = *str;
+        *str = c;
+
+        str++;
+        end--;
+    }
+}
+
+char* itoa(unsigned long long num, char *str, int base) {
+    // num is always considered unsigned even in base10
+    int i = 0;
+
+    if (num == 0) {
+        str[i] = '0';
+        i++;
+        str[i] = '\0';
+        return str;
+    }
+
+    while (num != 0) {
+        int rem = num % base;
+        str[i] = (rem > 9) ? (rem - 10) + 'a' : rem + '0';
+        i++;
+        num = num / base;
+    }
+
+    str[i] = '\0';
+
+    reverse(str, i);
+
+    return str;
+}
+
