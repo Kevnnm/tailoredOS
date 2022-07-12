@@ -24,5 +24,7 @@ void init_multiboot2(void) {
     init_core();
     init_extra();
 
+	__asm__ volatile ("sti"); // set interrupt flag (IF in EFLAGS register)
+
     kernel_main();
 }
