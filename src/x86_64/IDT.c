@@ -1,6 +1,8 @@
 #include "IDT.h"
 #include "IOPorts.h"
 #include "print.h"
+#include "serial.h"
+#include <string.h>
 
 #define IDT_MAX_DESCRIPTORS 256
 
@@ -22,9 +24,11 @@ static idtr_t idtr;
 // General exception handler
 void isr_handler(int int_num, register_context* regs) {
 	(void) regs;
-    print_str("interrupt handler char = ");
-	print_char((char) int_num);
-    print_str("\n");
+	serial_write("Interrupt number: ");
+	char num_str[4];
+	itoa(int_num, num_str, 10);
+	serial_write(num_str);
+	serial_write("\r\n");
 }
 
 void idt_set_descriptor(uint8_t vector, void* isr, uint8_t flags);
